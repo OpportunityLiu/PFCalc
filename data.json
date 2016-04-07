@@ -1,0 +1,77 @@
+{
+    "$schema": "http://learn.tsinghua.edu.cn:8080/2013011004/DataSchema.json",
+    "PQNode": [
+        {
+            "Name": "1",
+            "Pg": -0.3,
+            "Qg": -0.18
+        },
+        {
+            "Name": "2",
+            "Pg": -0.55,
+            "Qg": -0.13
+        }
+    ],
+    "PVNode": [
+        {
+            "Name": "3",
+            "Pg": 0.5,
+            "U": 1.1
+        }
+    ],
+    "RelaxNode": {
+        "Name": "4",
+        "U": 1.05,
+        "Delta": 0
+    },
+    "Grounding": [ ],
+    "Transformer": [
+        {
+            "LeftNode": "3",
+            "RightNode": "1",
+            "K": 1.1,
+            "Z": [
+                0,
+                0.3
+            ]
+        }
+    ],
+    "Transmission": [
+        {
+            "LeftNode": "1",
+            "RightNode": "2",
+            "Z": [
+                0.1,
+                0.4
+            ],
+            "Y": [
+                0,
+                0.03056
+            ]
+        },
+        {
+            "LeftNode": "1",
+            "RightNode": "4",
+            "Z": [
+                0.12,
+                0.5
+            ],
+            "Y": [
+                0,
+                0.0384
+            ]
+        },
+        {
+            "LeftNode": "2",
+            "RightNode": "4",
+            "Z": [
+                0.08,
+                0.4
+            ],
+            "Y": [
+                0,
+                0.02826
+            ]
+        }
+    ]
+}

@@ -1,0 +1,224 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "PFSolver Data File",
+    "type": "object",
+    "id": "PFDataSchema",
+    "properties": {
+        "$schema": {
+            "type": "string"
+        },
+        "PVNode": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Name": {
+                        "type": "string",
+                        "description": "节点名称"
+                    },
+                    "Pg": {
+                        "type": "number",
+                        "description": "注入有功"
+                    },
+                    "U": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "电压幅值"
+                    }
+                },
+                "required": [
+                    "Name",
+                    "Pg",
+                    "U"
+                ],
+                "additionalProperties": false
+            },
+            "uniqueItems": true,
+            "description": "PV 节点"
+        },
+        "PQNode": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Name": {
+                        "type": "string",
+                        "description": "节点名称"
+                    },
+                    "Pg": {
+                        "type": "number",
+                        "description": "注入有功"
+                    },
+                    "Qg": {
+                        "type": "number",
+                        "description": "注入无功"
+                    }
+                },
+                "required": [
+                    "Name",
+                    "Pg",
+                    "Qg"
+                ],
+                "additionalProperties": false
+            },
+            "uniqueItems": true,
+            "description": "PQ 节点"
+        },
+        "RelaxNode": {
+            "type": "object",
+            "properties": {
+                "Name": {
+                    "type": "string",
+                    "description": "节点名称"
+                },
+                "U": {
+                    "type": "number",
+                    "description": "电压幅值",
+                    "minimum": 0
+                },
+                "Delta": {
+                    "type": "number",
+                    "description": "相角（°）"
+                }
+            },
+            "required": [
+                "Delta",
+                "Name",
+                "U"
+            ],
+            "description": "松弛节点",
+            "additionalProperties": false
+        },
+        "Grounding": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Node": {
+                        "type": "string",
+                        "description": "节点名称"
+                    },
+                    "Y": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        },
+                        "maxItems": 2,
+                        "minItems": 2,
+                        "description": "导纳"
+                    }
+                },
+                "required": [
+                    "Node",
+                    "Y"
+                ],
+                "additionalProperties": false
+            },
+            "uniqueItems": true,
+            "description": "接地导纳"
+        },
+        "Transmission": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "LeftNode": {
+                        "type": "string",
+                        "description": "左节点名称"
+                    },
+                    "RightNode": {
+                        "type": "string",
+                        "description": "右节点名称"
+                    },
+                    "Y": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        },
+                        "description": "导纳",
+                        "maxItems": 2,
+                        "minItems": 2
+                    },
+                    "Z": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        },
+                        "description": "阻抗",
+                        "maxItems": 2,
+                        "minItems": 2
+                    },
+                    "Module": {
+                        "type": "string",
+                        "enum": [
+                            "Middle",
+                            "Long",
+                            "MidLong",
+                            "Short"
+                        ],
+                        "description": "计算模型",
+                        "default": "Middle"
+                    }
+                },
+                "required": [
+                    "LeftNode",
+                    "RightNode",
+                    "Y",
+                    "Z"
+                ],
+                "additionalProperties": false
+            },
+            "uniqueItems": true,
+            "description": "传输线"
+        },
+        "Transformer": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "LeftNode": {
+                        "type": "string",
+                        "description": "左节点名称"
+                    },
+                    "RightNode": {
+                        "type": "string",
+                        "description": "右节点名称"
+                    },
+                    "Z": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        },
+                        "description": "阻抗（折合至 L 侧）",
+                        "maxItems": 2,
+                        "minItems": 2
+                    },
+                    "K": {
+                        "type": "number",
+                        "description": "变比（L:R = K:1）",
+                        "minimum": 0,
+                        "exclusiveMinimum": true
+                    }
+                },
+                "required": [
+                    "LeftNode",
+                    "RightNode",
+                    "Z",
+                    "K"
+                ],
+                "additionalProperties": false
+            },
+            "uniqueItems": true,
+            "description": "变压器"
+        }
+    },
+    "required": [
+        "PQNode",
+        "PVNode",
+        "RelaxNode",
+        "Grounding",
+        "Transmission",
+        "Transformer"
+    ],
+    "additionalProperties": false
+}
