@@ -20,10 +20,10 @@ namespace PFCalc
 
         private static void test3()
         {
-            var p = DelimitedReader.Read<double>(@"c:\Users\liuzh\desktop\p").Column(0);
-            var q = DelimitedReader.Read<double>(@"c:\Users\liuzh\desktop\q").Column(0);
-            var u = DelimitedReader.Read<double>(@"c:\Users\liuzh\desktop\v").Column(0);
-            var y = DelimitedReader.Read<Complex>(@"c:\Users\liuzh\desktop\y", true);
+            var p = DelimitedReader.Read<double>(@"p").Column(0);
+            var q = DelimitedReader.Read<double>(@"q").Column(0);
+            var u = DelimitedReader.Read<double>(@"v").Column(0);
+            var y = DelimitedReader.Read<Complex>(@"y", true);
             Complex r = 0.982;
             for(int i = 0; i < 256; i++)
             {
