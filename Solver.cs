@@ -275,27 +275,27 @@ namespace PFCalc
     {
         protected override void InitOverride(Vector<double> pData, Vector<double> qData, Vector<double> uData, Complex relaxData, Matrix<Complex> yMatrix)
         {
-            a = CreateVector.Sparse<double>(NodeCount);
-            b = CreateVector.Sparse<double>(NodeCount);
+            a = CreateVector.Dense<double>(NodeCount);
+            b = CreateVector.Dense<double>(NodeCount);
 
-            e = CreateVector.Sparse<double>(NodeCount);
+            e = CreateVector.Dense<double>(NodeCount);
             e[PQVNodeCount] = RelaxNode.Real;
-            f = CreateVector.Sparse<double>(NodeCount);
+            f = CreateVector.Dense<double>(NodeCount);
             f[PQVNodeCount] = RelaxNode.Imaginary;
 
-            x = CreateVector.Sparse(2 * PQVNodeCount, i => i < PQVNodeCount ? 1.0 : 0);
-            dltx = CreateVector.Sparse<double>(2 * PQVNodeCount);
-            dlt = CreateVector.Sparse<double>(2 * PQVNodeCount);
+            x = CreateVector.Dense(2 * PQVNodeCount, i => i < PQVNodeCount ? 1.0 : 0);
+            dltx = CreateVector.Dense<double>(2 * PQVNodeCount);
+            dlt = CreateVector.Dense<double>(2 * PQVNodeCount);
             u2 = U.PointwisePower(2);
             jcb = CreateMatrix.Sparse<double>(2 * PQVNodeCount, 2 * PQVNodeCount);
 
-            tempN = CreateVector.Sparse<double>(NodeCount);
-            tempPQ1 = CreateVector.Sparse<double>(PQNodeCount);
-            tempPQ2 = CreateVector.Sparse<double>(PQNodeCount);
-            tempPV1 = CreateVector.Sparse<double>(PVNodeCount);
-            tempPV2 = CreateVector.Sparse<double>(PVNodeCount);
-            tempPQV1 = CreateVector.Sparse<double>(PQVNodeCount);
-            tempPQV2 = CreateVector.Sparse<double>(PQVNodeCount);
+            tempN = CreateVector.Dense<double>(NodeCount);
+            tempPQ1 = CreateVector.Dense<double>(PQNodeCount);
+            tempPQ2 = CreateVector.Dense<double>(PQNodeCount);
+            tempPV1 = CreateVector.Dense<double>(PVNodeCount);
+            tempPV2 = CreateVector.Dense<double>(PVNodeCount);
+            tempPQV1 = CreateVector.Dense<double>(PQVNodeCount);
+            tempPQV2 = CreateVector.Dense<double>(PQVNodeCount);
 
             subG = G.SubMatrix(0, PQVNodeCount, 0, PQVNodeCount);
             subB = B.SubMatrix(0, PQVNodeCount, 0, PQVNodeCount);

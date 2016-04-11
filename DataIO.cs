@@ -433,7 +433,7 @@ namespace PFCalc
                 {
                     if(row == col || y[row, col] == 0)
                         continue;
-                    var il = y[row, col] * (u[row] - u[col]);
+                    var il = y[row, col] * (u[col] - u[row]);
                     var power = u[row] * Complex.Conjugate(il);
                     PowerFlows.Add(new PowerFlow
                     {

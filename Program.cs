@@ -15,22 +15,40 @@ namespace PFCalc
 
         static void Main(string[] args)
         {
-            test2();
+            test3();
         }
 
         private static void test3()
         {
             var p = DelimitedReader.Read<double>(@"c:\Users\liuzh\desktop\p").Column(0);
             var q = DelimitedReader.Read<double>(@"c:\Users\liuzh\desktop\q").Column(0);
-            var u = DelimitedReader.Read<double>(@"c:\Users\liuzh\desktop\u").Column(0);
+            var u = DelimitedReader.Read<double>(@"c:\Users\liuzh\desktop\v").Column(0);
             var y = DelimitedReader.Read<Complex>(@"c:\Users\liuzh\desktop\y", true);
-            Complex r = 1.0449384;
-            var solver = new SparseRectSolver();
-            solver.Init(p, q, u, r, y);
-            solver.Solve();
-            var solver2 = new SparsePolarSolver();
-            solver2.Init(p, q, u, r, y);
-            solver2.Solve();
+            Complex r = 0.982;
+            for(int i = 0; i < 256; i++)
+            {
+                var solver = new RectangularSolver();
+                solver.Init(p, q, u, r, y);
+                solver.Solve();
+            }
+            for(int i = 0; i < 256; i++)
+            {
+                var solver = new PolarSolver();
+                solver.Init(p, q, u, r, y);
+                solver.Solve();
+            }
+            for(int i = 0; i < 256; i++)
+            {
+                var solver = new SparseRectSolver();
+                solver.Init(p, q, u, r, y);
+                solver.Solve();
+            }
+            for(int i = 0; i < 256; i++)
+            {
+                var solver = new SparsePolarSolver();
+                solver.Init(p, q, u, r, y);
+                solver.Solve();
+            }
         }
 
         private static void test2()
