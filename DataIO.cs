@@ -18,13 +18,14 @@ namespace PFCalc
             return JsonConvert.DeserializeObject<Problem>(value, compC);
         }
 
-        public static string WriteJson(Problem prob)
+        public static void WriteJson(string filePath, Solution solu)
         {
-
-            return JsonConvert.SerializeObject(prob, Formatting.Indented, compC);
+            var st = JsonConvert.SerializeObject(solu, Formatting.Indented, compC, compE);
+            File.WriteAllText(filePath, st);
         }
 
-        private static readonly complexConverter compC = new complexConverter();
+        private static readonly JsonConverter compC = new complexConverter();
+        private static readonly JsonConverter compE = new Newtonsoft.Json.Converters.StringEnumConverter();
 
         private class complexConverter : JsonConverter
         {
@@ -92,7 +93,6 @@ namespace PFCalc
 
         public T GetSolver<T>() where T : Solver, new()
         {
-            var mapper = new Dictionary<string, int>();
             var i = 0;
             var p = CreateVector.Dense<double>(PQNode.Count + PVNode.Count);
             var q = CreateVector.Dense<double>(PQNode.Count);
@@ -103,20 +103,20 @@ namespace PFCalc
             {
                 p[i] = item.Pg;
                 q[i] = item.Qg;
-                mapper.Add(item.Name, i++);
+                Mapper.Add(item.Name, i++);
             }
             var j = 0;
             foreach(var item in PVNode)
             {
                 p[i] = item.Pg;
                 u[j++] = item.U;
-                mapper.Add(item.Name, i++);
+                Mapper.Add(item.Name, i++);
             }
-            mapper.Add(RelaxNode.Name, i);
+            Mapper.Add(RelaxNode.Name, i);
 
             foreach(var item in Grounding.Concat<Branch>(Transformer).Concat(Transmission))
             {
-                item.IndexMapper = s => mapper[s];
+                item.IndexMapper = s => Mapper[s];
                 item.Apply(y);
             }
 
@@ -124,6 +124,30 @@ namespace PFCalc
             a.Init(p, q, u, r, y);
             return a;
         }
+
+        [JsonIgnore]
+        public IEnumerable<Node> Node
+        {
+            get
+            {
+                foreach(var item in PQNode)
+                {
+                    yield return item;
+                }
+                foreach(var item in PVNode)
+                {
+                    yield return item;
+                }
+                yield return RelaxNode;
+            }
+        }
+
+        [JsonIgnore]
+        public IDictionary<string, int> Mapper
+        {
+            get;
+            private set;
+        } = new Dictionary<string, int>();
     }
 
     public abstract class Node
@@ -182,6 +206,33 @@ namespace PFCalc
         public Complex ToComplex()
         {
             return Complex.FromPolarCoordinates(U, Delta * Math.PI / 180);
+        }
+    }
+
+    public class ResultNode : Node
+    {
+        public double P
+        {
+            get;
+            set;
+        }
+
+        public double Q
+        {
+            get;
+            set;
+        }
+
+        public double U
+        {
+            get;
+            set;
+        }
+
+        public double Delta
+        {
+            get;
+            set;
         }
     }
 
@@ -325,6 +376,99 @@ namespace PFCalc
             yMatrix[l, r] -= ky;
             yMatrix[r, l] -= ky;
             yMatrix[r, r] += K * ky;
+        }
+    }
+
+    public class PowerFlow
+    {
+        public string From
+        {
+            get;
+            set;
+        }
+
+        public string To
+        {
+            get; set;
+        }
+
+        public double P
+        {
+            get; set;
+        }
+
+        public double Q
+        {
+            get; set;
+        }
+    }
+
+    public class Solution
+    {
+        public Solution(Problem problem, Solver solver)
+        {
+            OriginalProblem = problem;
+            var y = solver.Y;
+            var u = solver.NodeResult;
+            var i = y * u;
+            var s = u.PointwiseMultiply(i.Conjugate());
+            var ii = 0;
+            var query = u.Zip(problem.Node, (re, no) => Tuple.Create(re, no)).Zip(s, (tuple, ss) =>
+            {
+                this.DeMapper.Add(ii++, tuple.Item2.Name);
+                return new ResultNode
+                {
+                    Name = tuple.Item2.Name,
+                    U = tuple.Item1.Magnitude,
+                    Delta = tuple.Item1.Phase * 180 / Math.PI,
+                    P = ss.Real,
+                    Q = ss.Imaginary
+                };
+            });
+            Nodes = query.ToArray();
+            PowerFlows = new List<PowerFlow>();
+            for(int row = 0; row < y.RowCount; row++)
+            {
+                for(int col = 0; col < y.ColumnCount; col++)
+                {
+                    if(row == col || y[row, col] == 0)
+                        continue;
+                    var il = y[row, col] * (u[row] - u[col]);
+                    var power = u[row] * Complex.Conjugate(il);
+                    PowerFlows.Add(new PowerFlow
+                    {
+                        From = DeMapper[row],
+                        To = DeMapper[col],
+                        P = power.Real,
+                        Q = power.Imaginary
+                    });
+                }
+            }
+        }
+
+        public Problem OriginalProblem
+        {
+            get;
+            set;
+        }
+
+        [JsonIgnore]
+        public IDictionary<int, string> DeMapper
+        {
+            get;
+            private set;
+        } = new Dictionary<int, string>();
+
+        public ICollection<ResultNode> Nodes
+        {
+            get;
+            private set;
+        }
+
+        public ICollection<PowerFlow> PowerFlows
+        {
+            get;
+            private set;
         }
     }
 }

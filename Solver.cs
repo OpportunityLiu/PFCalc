@@ -18,6 +18,7 @@ namespace PFCalc
             Pg = pData;
             Qg = qData;
             U = uData;
+            Y = yMatrix;
             G = yMatrix.Real();
             B = yMatrix.Imaginary();
             RelaxNode = relaxData;
@@ -98,6 +99,12 @@ namespace PFCalc
         }
 
         public Vector<double> U
+        {
+            get;
+            private set;
+        }
+
+        public Matrix<Complex> Y
         {
             get;
             private set;

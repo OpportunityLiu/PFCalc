@@ -15,7 +15,7 @@ namespace PFCalc
 
         static void Main(string[] args)
         {
-            test3();
+            test2();
         }
 
         private static void test3()
@@ -38,6 +38,8 @@ namespace PFCalc
             var problem = DataIO.ReadJson("data.json");
             var s = problem.GetSolver<RectangularSolver>();
             s.Solve();
+            var solu = new Solution(problem, s);
+            DataIO.WriteJson("solu.json", solu);
         }
 
         static void test1()
