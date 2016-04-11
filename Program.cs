@@ -23,12 +23,12 @@ namespace PFCalc
             var p = DelimitedReader.Read<double>(@"c:\Users\liuzh\desktop\p").Column(0);
             var q = DelimitedReader.Read<double>(@"c:\Users\liuzh\desktop\q").Column(0);
             var u = DelimitedReader.Read<double>(@"c:\Users\liuzh\desktop\u").Column(0);
-            var y = DelimitedReader.Read<Complex>(@"c:\Users\liuzh\desktop\y");
-            Complex r = 0.982;
-            var solver = new RectangularSolver();
+            var y = DelimitedReader.Read<Complex>(@"c:\Users\liuzh\desktop\y", true);
+            Complex r = 1.0449384;
+            var solver = new SparseRectSolver();
             solver.Init(p, q, u, r, y);
             solver.Solve();
-            var solver2 = new PolarSolver();
+            var solver2 = new SparsePolarSolver();
             solver2.Init(p, q, u, r, y);
             solver2.Solve();
         }

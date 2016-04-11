@@ -168,9 +168,9 @@ namespace PFCalc
             diagb = new DiagonalMatrix(PQVNodeCount);
         }
 
-        private Vector<double> a, b, e, f, x,dltx, dlt, u2, tempN, tempPQ1, tempPQ2, tempPV1, tempPV2, tempPQV1, tempPQV2;
-        private Matrix<double> jcb, ge, bf, pge_pbf, be, gf, pbe_ngf, tempPQV_PQV, ml, subG, subB;
-        private DiagonalMatrix ndiaga, diagb,rs;
+        protected Vector<double> a, b, e, f, x,dltx, dlt, u2, tempN, tempPQ1, tempPQ2, tempPV1, tempPV2, tempPQV1, tempPQV2;
+        protected Matrix<double> jcb, ge, bf, pge_pbf, be, gf, pbe_ngf, tempPQV_PQV, ml, subG, subB;
+        protected DiagonalMatrix ndiaga, diagb,rs;
 
         protected override Vector<double> Difference()
         {
@@ -264,13 +264,58 @@ namespace PFCalc
         }
     }
 
+    public class SparseRectSolver : RectangularSolver
+    {
+        protected override void InitOverride(Vector<double> pData, Vector<double> qData, Vector<double> uData, Complex relaxData, Matrix<Complex> yMatrix)
+        {
+            a = CreateVector.Sparse<double>(NodeCount);
+            b = CreateVector.Sparse<double>(NodeCount);
+
+            e = CreateVector.Sparse<double>(NodeCount);
+            e[PQVNodeCount] = RelaxNode.Real;
+            f = CreateVector.Sparse<double>(NodeCount);
+            f[PQVNodeCount] = RelaxNode.Imaginary;
+
+            x = CreateVector.Sparse(2 * PQVNodeCount, i => i < PQVNodeCount ? 1.0 : 0);
+            dltx = CreateVector.Sparse<double>(2 * PQVNodeCount);
+            dlt = CreateVector.Sparse<double>(2 * PQVNodeCount);
+            u2 = U.PointwisePower(2);
+            jcb = CreateMatrix.Sparse<double>(2 * PQVNodeCount, 2 * PQVNodeCount);
+
+            tempN = CreateVector.Sparse<double>(NodeCount);
+            tempPQ1 = CreateVector.Sparse<double>(PQNodeCount);
+            tempPQ2 = CreateVector.Sparse<double>(PQNodeCount);
+            tempPV1 = CreateVector.Sparse<double>(PVNodeCount);
+            tempPV2 = CreateVector.Sparse<double>(PVNodeCount);
+            tempPQV1 = CreateVector.Sparse<double>(PQVNodeCount);
+            tempPQV2 = CreateVector.Sparse<double>(PQVNodeCount);
+
+            subG = G.SubMatrix(0, PQVNodeCount, 0, PQVNodeCount);
+            subB = B.SubMatrix(0, PQVNodeCount, 0, PQVNodeCount);
+
+            ge = CreateMatrix.Sparse<double>(PQVNodeCount, PQVNodeCount);
+            bf = CreateMatrix.Sparse<double>(PQVNodeCount, PQVNodeCount);
+            pge_pbf = CreateMatrix.Sparse<double>(PQVNodeCount, PQVNodeCount);
+            be = CreateMatrix.Sparse<double>(PQVNodeCount, PQVNodeCount);
+            gf = CreateMatrix.Sparse<double>(PQVNodeCount, PQVNodeCount);
+            pbe_ngf = CreateMatrix.Sparse<double>(PQVNodeCount, PQVNodeCount);
+
+            tempPQV_PQV = CreateMatrix.Sparse<double>(PQVNodeCount, PQVNodeCount);
+            ml = CreateMatrix.Sparse<double>(PQNodeCount, PQVNodeCount);
+            rs = new DiagonalMatrix(PVNodeCount);
+
+            ndiaga = new DiagonalMatrix(PQVNodeCount);
+            diagb = new DiagonalMatrix(PQVNodeCount);
+        }
+    }
+
     public class PolarSolver : Solver
     {
         public override Vector<Complex> NodeResult => u.MapIndexed((i, va) => Complex.FromPolarCoordinates(va, delta[i]));
 
         protected override void InitOverride(Vector<double> pData, Vector<double> qData, Vector<double> uData, Complex relaxData, Matrix<Complex> yMatrix)
         {
-            x = CreateVector.Dense(PQVNodeCount + PQNodeCount, i => i > PQNodeCount ? 1.0 : 0);
+            x = CreateVector.Dense(PQVNodeCount + PQNodeCount, i => i < PQVNodeCount ? 0 : 1.0);
             u = CreateVector.Dense<double>(NodeCount);
             u[NodeCount - 1] = RelaxNode.Magnitude;
             u.SetSubVector(PQNodeCount, PVNodeCount, U);
@@ -283,8 +328,8 @@ namespace PFCalc
             jcb = CreateMatrix.Dense<double>(PQVNodeCount + PQNodeCount, PQVNodeCount + PQNodeCount);
         }
 
-        private Vector<double> x, dltx, dlt, u, delta, cosdelta, sindelta, u_sum_u_ngcnbs, u_sum_u_pgsnbc;
-        private Matrix<double> cosDelta, sinDelta,jcb, ngcnbs, pgsnbc;
+        protected Vector<double> x, dltx, dlt, u, delta, cosdelta, sindelta, u_sum_u_ngcnbs, u_sum_u_pgsnbc;
+        protected Matrix<double> cosDelta, sinDelta,jcb, ngcnbs, pgsnbc;
 
         protected override Vector<double> Difference()
         {
@@ -342,6 +387,24 @@ namespace PFCalc
             nm.Negate(nm);
             nm.SetDiagonal(u_sum_u_ngcnbs + u2G);
             jcb.SetSubMatrix(PQVNodeCount, PQNodeCount, 0, PQVNodeCount, nm);
+        }
+    }
+
+    public class SparsePolarSolver : PolarSolver
+    {
+        protected override void InitOverride(Vector<double> pData, Vector<double> qData, Vector<double> uData, Complex relaxData, Matrix<Complex> yMatrix)
+        {
+            x = CreateVector.Sparse(PQVNodeCount + PQNodeCount, i => i < PQVNodeCount ? 0 : 1.0);
+            u = CreateVector.Sparse<double>(NodeCount);
+            u[NodeCount - 1] = RelaxNode.Magnitude;
+            u.SetSubVector(PQNodeCount, PVNodeCount, U);
+            delta = CreateVector.Sparse<double>(NodeCount);
+            delta[NodeCount - 1] = RelaxNode.Phase;
+
+            dlt = CreateVector.Sparse<double>(PQVNodeCount + PQNodeCount);
+            dltx = CreateVector.Sparse<double>(PQVNodeCount + PQNodeCount);
+
+            jcb = CreateMatrix.Sparse<double>(PQVNodeCount + PQNodeCount, PQVNodeCount + PQNodeCount);
         }
     }
 }
