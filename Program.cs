@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using MathNet.Numerics.LinearAlgebra;
 using System.Numerics;
 using MathNet.Numerics.Data.Text;
+using MathNet.Numerics;
+using System.Diagnostics;
 
 namespace PFCalc
 {
@@ -15,49 +17,159 @@ namespace PFCalc
 
         static void Main(string[] args)
         {
-            test3();
+            //test1();
+            var files = new List<string>();
+            var param = new List<string>();
+            foreach(var item in args)
+            {
+                if(item.StartsWith("-"))
+                    param.Add(item.Substring(1).Trim().ToLower());
+                else
+                    files.Add(item.Trim());
+            }
+            Control.UseManaged();
+            bool? rect = null;
+            bool? dense = null;
+            foreach(var item in param)
+            {
+                switch(item)
+                {
+                case "kml":
+                    Control.UseNativeMKL();
+                    break;
+                case "rect":
+                    if(rect == null)
+                    {
+                        rect = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"参数重复：{item}");
+                        Console.WriteLine();
+                        return;
+                    }
+                    break;
+                case "polar":
+                    if(rect == null)
+                    {
+                        rect = false;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"参数重复：{item}");
+                        Console.WriteLine();
+                        return;
+                    }
+                    break;
+                case "dense":
+                    if(dense == null)
+                    {
+                        dense = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"参数重复：{item}");
+                        Console.WriteLine();
+                        return;
+                    }
+                    break;
+                case "sparse":
+                    if(dense == null)
+                    {
+                        dense = false;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"参数重复：{item}");
+                        Console.WriteLine();
+                        return;
+                    }
+                    break;
+                default:
+                    Console.WriteLine($"未知参数：{item}");
+                    Console.WriteLine();
+                    return;
+                }
+            }
+            var Dense = dense ?? true;
+            var Rect = rect ?? true;
+            Solver solver;
+            var s = Stopwatch.StartNew();
+            if(files.Count == 2)
+            {
+                if(Dense)
+                {
+                    if(Rect)
+                        solver = solve<RectangularSolver>(files[0], files[1]);
+                    else
+                        solver = solve<PolarSolver>(files[0], files[1]);
+                }
+                else
+                {
+                    if(Rect)
+                        solver = solve<SparseRectSolver>(files[0], files[1]);
+                    else
+                        solver = solve<SparsePolarSolver>(files[0], files[1]);
+                }
+            }
+            else if(files.Count == 6)
+            {
+                if(Dense)
+                {
+                    if(Rect)
+                        solver = solve<RectangularSolver>(files[0], files[1], files[2], files[3], files[4], files[5]);
+                    else
+                        solver = solve<PolarSolver>(files[0], files[1], files[2], files[3], files[4], files[5]);
+                }
+                else
+                {
+                    if(Rect)
+                        solver = solve<SparseRectSolver>(files[0], files[1], files[2], files[3], files[4], files[5]);
+                    else
+                        solver = solve<SparsePolarSolver>(files[0], files[1], files[2], files[3], files[4], files[5]);
+                }
+            }
+            else
+            {
+                Console.WriteLine($"参数数目不正确");
+                Console.WriteLine();
+                return;
+            }
+            s.Stop();
+            Console.WriteLine("求解结束");
+            Console.WriteLine($"求解器：{solver.GetType()}");
+            Console.WriteLine($"运算器：{Control.LinearAlgebraProvider.GetType()}");
+            Console.WriteLine($"结果：{(solver.NodeResult.Any(c => c.IsNaN()) ? "失败" : "成功")}");
+            Console.WriteLine($"迭代次数：{solver.IterCount}");
+            Console.WriteLine($"用时：{s.Elapsed}");
+            Console.WriteLine();
         }
 
-        private static void test3()
+        private static T solve<T>(string pFile, string qFile, string vFile, string rFile, string yFile, string soluFile)
+            where T : Solver, new()
         {
-            var p = DelimitedReader.Read<double>(@"p").Column(0);
-            var q = DelimitedReader.Read<double>(@"q").Column(0);
-            var u = DelimitedReader.Read<double>(@"v").Column(0);
-            var y = DelimitedReader.Read<Complex>(@"y", true);
-            Complex r = 0.982;
-            for(int i = 0; i < 256; i++)
-            {
-                var solver = new RectangularSolver();
-                solver.Init(p, q, u, r, y);
-                solver.Solve();
-            }
-            for(int i = 0; i < 256; i++)
-            {
-                var solver = new PolarSolver();
-                solver.Init(p, q, u, r, y);
-                solver.Solve();
-            }
-            for(int i = 0; i < 256; i++)
-            {
-                var solver = new SparseRectSolver();
-                solver.Init(p, q, u, r, y);
-                solver.Solve();
-            }
-            for(int i = 0; i < 256; i++)
-            {
-                var solver = new SparsePolarSolver();
-                solver.Init(p, q, u, r, y);
-                solver.Solve();
-            }
+            var p = DelimitedReader.Read<double>(pFile).Column(0);
+            var q = DelimitedReader.Read<double>(qFile).Column(0);
+            var u = DelimitedReader.Read<double>(vFile).Column(0);
+            var y = DelimitedReader.Read<Complex>(yFile);
+            Complex r = DelimitedReader.Read<Complex>(rFile)[0, 0];
+            T s = new T();
+            s.Init(p, q, u, r, y);
+            s.Solve();
+            var solu = new Solution(s);
+            DataIO.WriteJson(soluFile, solu);
+            return s;
         }
 
-        private static void test2()
+        private static T solve<T>(string dataFile, string soluFile)
+            where T : Solver, new()
         {
-            var problem = DataIO.ReadJson("data.json");
-            var s = problem.GetSolver<RectangularSolver>();
+            var problem = DataIO.ReadJson(dataFile);
+            var s = problem.GetSolver<T>();
             s.Solve();
             var solu = new Solution(problem, s);
-            DataIO.WriteJson("solu.json", solu);
+            DataIO.WriteJson(soluFile, solu);
+            return s;
         }
 
         static void test1()
@@ -74,12 +186,15 @@ namespace PFCalc
                 { 0, 0, 0, 0.9346 - i * 4.2616 }
             });
             y = y + y.StrictlyUpperTriangle().Transpose();
-            var solver = new RectangularSolver();
+            var solver = new SparsePolarSolver();
             solver.Init(p, q, u, r, y);
             solver.Solve();
-            var solver2 = new PolarSolver();
+            var solver2 = new RectangularSolver();
             solver2.Init(p, q, u, r, y);
             solver2.Solve();
+            var solver3 = new PolarSolver();
+            solver3.Init(p, q, u, r, y);
+            solver3.Solve();
         }
     }
 }

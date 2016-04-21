@@ -53,7 +53,7 @@ namespace PFCalc
             get;
             private set;
         }
-        
+
         protected abstract Vector<double> Difference();
         protected abstract void Iter();
 
@@ -148,7 +148,7 @@ namespace PFCalc
             dlt = CreateVector.Dense<double>(2 * PQVNodeCount);
             u2 = U.PointwisePower(2);
             jcb = CreateMatrix.Dense<double>(2 * PQVNodeCount, 2 * PQVNodeCount);
-            
+
             tempN = CreateVector.Dense<double>(NodeCount);
             tempPQ1 = CreateVector.Dense<double>(PQNodeCount);
             tempPQ2 = CreateVector.Dense<double>(PQNodeCount);
@@ -175,9 +175,9 @@ namespace PFCalc
             diagb = new DiagonalMatrix(PQVNodeCount);
         }
 
-        protected Vector<double> a, b, e, f, x,dltx, dlt, u2, tempN, tempPQ1, tempPQ2, tempPV1, tempPV2, tempPQV1, tempPQV2;
+        protected Vector<double> a, b, e, f, x, dltx, dlt, u2, tempN, tempPQ1, tempPQ2, tempPV1, tempPV2, tempPQV1, tempPQV2;
         protected Matrix<double> jcb, ge, bf, pge_pbf, be, gf, pbe_ngf, tempPQV_PQV, ml, subG, subB;
-        protected DiagonalMatrix ndiaga, diagb,rs;
+        protected DiagonalMatrix ndiaga, diagb, rs;
 
         protected override Vector<double> Difference()
         {
@@ -333,34 +333,74 @@ namespace PFCalc
             dltx = CreateVector.Dense<double>(PQVNodeCount + PQNodeCount);
 
             jcb = CreateMatrix.Dense<double>(PQVNodeCount + PQNodeCount, PQVNodeCount + PQNodeCount);
+
+            ngcnbs = CreateMatrix.Dense<double>(NodeCount, NodeCount);
+            pgsnbc = CreateMatrix.Dense<double>(NodeCount, NodeCount);
+            U_ngcnbs = CreateMatrix.Dense<double>(NodeCount, NodeCount);
+            U_pgsnbc = CreateMatrix.Dense<double>(NodeCount, NodeCount);
+            sinDelta = CreateMatrix.Dense<double>(NodeCount, NodeCount);
+            ncosDelta = CreateMatrix.Dense<double>(NodeCount, NodeCount);
+
+            tempNM = CreateMatrix.Dense<double>(NodeCount, NodeCount);
+
+            tempNV = CreateVector.Dense<double>(NodeCount);
+
+            u2 = CreateVector.Dense<double>(NodeCount);
+            u2B = CreateVector.Dense<double>(NodeCount);
+            u2G = CreateVector.Dense<double>(NodeCount);
+
+            hl = CreateMatrix.Dense<double>(NodeCount, NodeCount);
+            nm = CreateMatrix.Dense<double>(NodeCount, NodeCount);
+            uc_ur = CreateMatrix.Dense<double>(NodeCount, NodeCount);
+
+            u_sum_u_ngcnbs = CreateVector.Dense<double>(NodeCount);
+            u_sum_u_pgsnbc = CreateVector.Dense<double>(NodeCount);
+            cosdelta = CreateVector.Dense<double>(NodeCount);
+            sindelta = CreateVector.Dense<double>(NodeCount);
         }
 
         protected Vector<double> x, dltx, dlt, u, delta, cosdelta, sindelta, u_sum_u_ngcnbs, u_sum_u_pgsnbc;
-        protected Matrix<double> cosDelta, sinDelta,jcb, ngcnbs, pgsnbc;
+        protected Vector<double> u2, u2B, u2G, tempNV;
+        protected Matrix<double> ncosDelta, sinDelta, jcb, ngcnbs, pgsnbc, U_ngcnbs, U_pgsnbc;
+        protected Matrix<double> tempNM;
+        protected Matrix<double> hl, nm, uc_ur;
 
         protected override Vector<double> Difference()
         {
             x.CopySubVectorTo(delta, 0, 0, PQVNodeCount);
             x.CopySubVectorTo(u, PQVNodeCount, 0, PQNodeCount);
 
-            sindelta = delta.Map(i => Trig.Sin(i), Zeros.Include);
-            cosdelta = delta.Map(i => Trig.Cos(i), Zeros.Include);
+            delta.Map(i => Trig.Sin(i), sindelta, Zeros.Include);
+            delta.Map(i => Trig.Cos(i), cosdelta, Zeros.Include);
             var sdc = sindelta.ToColumnMatrix();
-            var sdr = sindelta.ToRowMatrix();
+            var nsdr = -sindelta.ToRowMatrix();
             var cdc = cosdelta.ToColumnMatrix();
             var cdr = cosdelta.ToRowMatrix();
 
-            sinDelta = sdc * cdr - cdc * sdr;
-            cosDelta = cdc * cdr + sdc * sdr;
+            sdc.Multiply(cdr, sinDelta);
+            cdc.Multiply(nsdr, tempNM);
+            sinDelta.Add(tempNM, sinDelta);
+            //sinDelta = sdc * cdr + cdc * nsdr;
+            sdc.Multiply(nsdr, ncosDelta);
+            cdc.Multiply(cdr, tempNM);
+            ncosDelta.Subtract(tempNM, ncosDelta);
+            //ncosDelta = -cdc * cdr + sdc * nsdr;
+            G.PointwiseMultiply(ncosDelta, ngcnbs);
+            B.PointwiseMultiply(sinDelta, tempNM);
+            ngcnbs.Subtract(tempNM, ngcnbs);
+            //ngcnbs = G.PointwiseMultiply(ncosDelta) - B.PointwiseMultiply(sinDelta);
 
-            ngcnbs = -G.PointwiseMultiply(cosDelta) - B.PointwiseMultiply(sinDelta);
-            var U_ngcnbs = ngcnbs.MapIndexed((row, col, va) => va * u[col]);
-            u_sum_u_ngcnbs = u.PointwiseMultiply(U_ngcnbs.RowSums());
+            ngcnbs.MapIndexed((row, col, va) => va * u[col], U_ngcnbs);
+            u.PointwiseMultiply(U_ngcnbs.RowSums(), u_sum_u_ngcnbs);
             (Pg + u_sum_u_ngcnbs.SubVector(0, PQVNodeCount)).CopySubVectorTo(dlt, 0, 0, PQVNodeCount);
 
-            pgsnbc = G.PointwiseMultiply(sinDelta) - B.PointwiseMultiply(cosDelta);
-            var U_pgsnbc = pgsnbc.MapIndexed((row, col, va) => va * u[col]);
-            u_sum_u_pgsnbc = u.PointwiseMultiply(U_pgsnbc.RowSums());
+            G.PointwiseMultiply(sinDelta, pgsnbc);
+            B.PointwiseMultiply(ncosDelta, tempNM);
+            pgsnbc.Add(tempNM, pgsnbc);
+            //pgsnbc = G.PointwiseMultiply(sinDelta) + B.PointwiseMultiply(ncosDelta);
+
+            pgsnbc.MapIndexed((row, col, va) => va * u[col], U_pgsnbc);
+            u.PointwiseMultiply(U_pgsnbc.RowSums(), u_sum_u_pgsnbc);
             (Qg - u_sum_u_pgsnbc.SubVector(0, PQNodeCount)).CopySubVectorTo(dlt, 0, PQVNodeCount, PQNodeCount);
 
             return dlt;
@@ -377,22 +417,31 @@ namespace PFCalc
         {
             var uc = u.ToColumnMatrix();
             var ur = u.ToRowMatrix();
+            uc.Multiply(ur, uc_ur);
+            u.PointwiseMultiply(u, u2);
 
-            var hl = pgsnbc.PointwiseMultiply(-uc * ur);
-            var u2B = u.PointwiseMultiply(u).PointwiseMultiply(B.Diagonal());
-            hl.SetDiagonal(u_sum_u_pgsnbc + u2B);
+            uc_ur.Negate(tempNM);
+            pgsnbc.PointwiseMultiply(tempNM, hl);
+
+            u2.PointwiseMultiply(B.Diagonal(), u2B);
+            u_sum_u_pgsnbc.Add(u2B, tempNV);
+            hl.SetDiagonal(tempNV);
             jcb.SetSubMatrix(0, PQVNodeCount, 0, PQVNodeCount, hl);
 
-            hl.SetDiagonal(u2B - u_sum_u_pgsnbc);
-            jcb.SetSubMatrix(PQVNodeCount,PQNodeCount, PQVNodeCount, PQNodeCount, hl);
+            u2B.Subtract(u_sum_u_pgsnbc, tempNV);
+            hl.SetDiagonal(tempNV);
+            jcb.SetSubMatrix(PQVNodeCount, PQNodeCount, PQVNodeCount, PQNodeCount, hl);
 
-            var nm = ngcnbs.PointwiseMultiply(uc * ur);
-            var u2G = u.PointwiseMultiply(u).PointwiseMultiply(G.Diagonal());
-            nm.SetDiagonal(u_sum_u_ngcnbs - u2G);
+            ngcnbs.PointwiseMultiply(uc_ur, nm);
+            u2.PointwiseMultiply(G.Diagonal(), u2G);
+
+            u_sum_u_ngcnbs.Subtract(u2G, tempNV);
+            nm.SetDiagonal(tempNV);
             jcb.SetSubMatrix(0, PQVNodeCount, PQVNodeCount, PQNodeCount, nm);
 
             nm.Negate(nm);
-            nm.SetDiagonal(u_sum_u_ngcnbs + u2G);
+            u_sum_u_ngcnbs.Add(u2G, tempNV);
+            nm.SetDiagonal(tempNV);
             jcb.SetSubMatrix(PQVNodeCount, PQNodeCount, 0, PQVNodeCount, nm);
         }
     }
@@ -401,17 +450,41 @@ namespace PFCalc
     {
         protected override void InitOverride(Vector<double> pData, Vector<double> qData, Vector<double> uData, Complex relaxData, Matrix<Complex> yMatrix)
         {
-            x = CreateVector.Sparse(PQVNodeCount + PQNodeCount, i => i < PQVNodeCount ? 0 : 1.0);
-            u = CreateVector.Sparse<double>(NodeCount);
+            x = CreateVector.Dense(PQVNodeCount + PQNodeCount, i => i < PQVNodeCount ? 0 : 1.0);
+            u = CreateVector.Dense<double>(NodeCount);
             u[NodeCount - 1] = RelaxNode.Magnitude;
             u.SetSubVector(PQNodeCount, PVNodeCount, U);
-            delta = CreateVector.Sparse<double>(NodeCount);
+            delta = CreateVector.Dense<double>(NodeCount);
             delta[NodeCount - 1] = RelaxNode.Phase;
 
-            dlt = CreateVector.Sparse<double>(PQVNodeCount + PQNodeCount);
-            dltx = CreateVector.Sparse<double>(PQVNodeCount + PQNodeCount);
+            dlt = CreateVector.Dense<double>(PQVNodeCount + PQNodeCount);
+            dltx = CreateVector.Dense<double>(PQVNodeCount + PQNodeCount);
 
             jcb = CreateMatrix.Sparse<double>(PQVNodeCount + PQNodeCount, PQVNodeCount + PQNodeCount);
+
+            ngcnbs = CreateMatrix.Sparse<double>(NodeCount, NodeCount);
+            pgsnbc = CreateMatrix.Sparse<double>(NodeCount, NodeCount);
+            U_ngcnbs = CreateMatrix.Sparse<double>(NodeCount, NodeCount);
+            U_pgsnbc = CreateMatrix.Sparse<double>(NodeCount, NodeCount);
+            sinDelta = CreateMatrix.Sparse<double>(NodeCount, NodeCount);
+            ncosDelta = CreateMatrix.Sparse<double>(NodeCount, NodeCount);
+
+            tempNM = CreateMatrix.Sparse<double>(NodeCount, NodeCount);
+
+            tempNV = CreateVector.Sparse<double>(NodeCount);
+
+            u2 = CreateVector.Dense<double>(NodeCount);
+            u2B = CreateVector.Sparse<double>(NodeCount);
+            u2G = CreateVector.Sparse<double>(NodeCount);
+
+            hl = CreateMatrix.Sparse<double>(NodeCount, NodeCount);
+            nm = CreateMatrix.Sparse<double>(NodeCount, NodeCount);
+            uc_ur = CreateMatrix.Sparse<double>(NodeCount, NodeCount);
+
+            u_sum_u_ngcnbs = CreateVector.Sparse<double>(NodeCount);
+            u_sum_u_pgsnbc = CreateVector.Sparse<double>(NodeCount);
+            cosdelta = CreateVector.Sparse<double>(NodeCount);
+            sindelta = CreateVector.Sparse<double>(NodeCount);
         }
     }
 }

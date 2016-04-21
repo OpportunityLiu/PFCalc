@@ -272,7 +272,7 @@ namespace PFCalc
         }
     }
 
-    public abstract class ConnectionBranch: Branch
+    public abstract class ConnectionBranch : Branch
     {
         public string LeftNode
         {
@@ -426,6 +426,11 @@ namespace PFCalc
                 };
             });
             Nodes = query.ToArray();
+            caculatePowerFlow(y, u);
+        }
+
+        private void caculatePowerFlow(Matrix<Complex> y, Vector<Complex> u)
+        {
             PowerFlows = new List<PowerFlow>();
             for(int row = 0; row < y.RowCount; row++)
             {
@@ -444,6 +449,56 @@ namespace PFCalc
                     });
                 }
             }
+        }
+
+        public Solution(Solver solver)
+        {
+            var y = solver.Y;
+            var u = solver.NodeResult;
+            var i = y * u;
+            var s = u.PointwiseMultiply(i.Conjugate());
+            var nodes = new ResultNode[u.Count];
+            Nodes = nodes;
+            for(int ii = 0; ii < u.Count; ii++)
+            {
+                if(ii < solver.PQNodeCount)
+                {
+                    nodes[ii] = new ResultNode
+                    {
+                        Name = $"PQ Node {ii + 1}",
+                        U = u[ii].Magnitude,
+                        Delta = u[ii].Phase * 180 / Math.PI,
+                        P = s[ii].Real,
+                        Q = s[ii].Imaginary
+                    };
+                    DeMapper.Add(ii, $"PQ Node {ii + 1}");
+                }
+                else if(ii < solver.PQVNodeCount)
+                {
+                    nodes[ii] = new ResultNode
+                    {
+                        Name = $"PV Node {ii + 1 - solver.PQNodeCount}",
+                        U = u[ii].Magnitude,
+                        Delta = u[ii].Phase * 180 / Math.PI,
+                        P = s[ii].Real,
+                        Q = s[ii].Imaginary
+                    };
+                    DeMapper.Add(ii, $"PV Node {ii + 1 - solver.PQNodeCount}");
+                }
+                else
+                {
+                    nodes[ii] = new ResultNode
+                    {
+                        Name = $"Relax Node",
+                        U = u[ii].Magnitude,
+                        Delta = u[ii].Phase * 180 / Math.PI,
+                        P = s[ii].Real,
+                        Q = s[ii].Imaginary
+                    };
+                    DeMapper.Add(ii, $"Relax Node");
+                }
+            }
+            caculatePowerFlow(y, u);
         }
 
         public Problem OriginalProblem
