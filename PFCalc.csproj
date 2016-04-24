@@ -117,6 +117,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="DataSchema.json" />
+    <None Include="output.json" />
     <None Include="p">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

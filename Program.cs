@@ -34,7 +34,7 @@ namespace PFCalc
             {
                 switch(item)
                 {
-                case "kml":
+                case "mkl":
                     Control.UseNativeMKL();
                     break;
                 case "rect":
