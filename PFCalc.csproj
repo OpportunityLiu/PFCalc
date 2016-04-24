@@ -113,27 +113,26 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="data.json">
+    <None Include="example B\data.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="DataSchema.json" />
-    <None Include="output.json" />
-    <None Include="p">
+    <None Include="example A\p">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="packages.config" />
-    <None Include="q">
+    <None Include="example A\q">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="v">
+    <None Include="example A\v">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="y">
+    <None Include="example A\y">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="r">
+    <None Include="example A\r">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
